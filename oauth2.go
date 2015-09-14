@@ -23,8 +23,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-martini/martini"
-	"github.com/martini-contrib/sessions"
+	"github.com/Unknwon/macaron"
+	"github.com/macaron-contrib/session"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -88,13 +88,13 @@ func (t *token) String() string {
 }
 
 // Google returns a new Google OAuth 2.0 backend endpoint.
-func Google(conf *oauth2.Config) martini.Handler {
+func Google(conf *oauth2.Config) macaron.Handler {
 	conf.Endpoint = google.Endpoint
 	return NewOAuth2Provider(conf)
 }
 
 // Github returns a new Github OAuth 2.0 backend endpoint.
-func Github(conf *oauth2.Config) martini.Handler {
+func Github(conf *oauth2.Config) macaron.Handler {
 	conf.Endpoint = oauth2.Endpoint{
 		AuthURL:  "https://github.com/login/oauth/authorize",
 		TokenURL: "https://github.com/login/oauth/access_token",
@@ -103,7 +103,7 @@ func Github(conf *oauth2.Config) martini.Handler {
 }
 
 // Facebook returns a new Facebook OAuth 2.0 backend endpoint.
-func Facebook(conf *oauth2.Config) martini.Handler {
+func Facebook(conf *oauth2.Config) macaron.Handler {
 	conf.Endpoint = oauth2.Endpoint{
 		AuthURL:  "https://www.facebook.com/dialog/oauth",
 		TokenURL: "https://graph.facebook.com/oauth/access_token",
@@ -112,7 +112,7 @@ func Facebook(conf *oauth2.Config) martini.Handler {
 }
 
 // LinkedIn returns a new LinkedIn OAuth 2.0 backend endpoint.
-func LinkedIn(conf *oauth2.Config) martini.Handler {
+func LinkedIn(conf *oauth2.Config) macaron.Handler {
 	conf.Endpoint = oauth2.Endpoint{
 		AuthURL:  "https://www.linkedin.com/uas/oauth2/authorization",
 		TokenURL: "https://www.linkedin.com/uas/oauth2/accessToken",
@@ -121,9 +121,9 @@ func LinkedIn(conf *oauth2.Config) martini.Handler {
 }
 
 // NewOAuth2Provider returns a generic OAuth 2.0 backend endpoint.
-func NewOAuth2Provider(conf *oauth2.Config) martini.Handler {
+func NewOAuth2Provider(conf *oauth2.Config) macaron.Handler {
 
-	return func(s sessions.Session, c martini.Context, w http.ResponseWriter, r *http.Request) {
+	return func(s session.Store, c macaron.Context, w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			switch r.URL.Path {
 			case PathLogin:
@@ -151,8 +151,8 @@ func NewOAuth2Provider(conf *oauth2.Config) martini.Handler {
 // if user is not logged in.
 // Sample usage:
 // m.Get("/login-required", oauth2.LoginRequired, func() ... {})
-var LoginRequired = func() martini.Handler {
-	return func(s sessions.Session, c martini.Context, w http.ResponseWriter, r *http.Request) {
+var LoginRequired = func() macaron.Handler {
+	return func(s session.Store, c *macaron.Context, w http.ResponseWriter, r *http.Request) {
 		token := unmarshallToken(s)
 		if token == nil || token.Expired() {
 			next := url.QueryEscape(r.URL.RequestURI())
@@ -161,7 +161,7 @@ var LoginRequired = func() martini.Handler {
 	}
 }()
 
-func login(f *oauth2.Config, s sessions.Session, w http.ResponseWriter, r *http.Request) {
+func login(f *oauth2.Config, s session.Store, w http.ResponseWriter, r *http.Request) {
 	next := extractPath(r.URL.Query().Get(keyNextPage))
 	if s.Get(keyToken) == nil {
 		// User is not logged in.
@@ -175,13 +175,13 @@ func login(f *oauth2.Config, s sessions.Session, w http.ResponseWriter, r *http.
 	http.Redirect(w, r, next, codeRedirect)
 }
 
-func logout(s sessions.Session, w http.ResponseWriter, r *http.Request) {
+func logout(s session.Store, w http.ResponseWriter, r *http.Request) {
 	next := extractPath(r.URL.Query().Get(keyNextPage))
 	s.Delete(keyToken)
 	http.Redirect(w, r, next, codeRedirect)
 }
 
-func handleOAuth2Callback(f *oauth2.Config, s sessions.Session, w http.ResponseWriter, r *http.Request) {
+func handleOAuth2Callback(f *oauth2.Config, s session.Store, w http.ResponseWriter, r *http.Request) {
 	next := extractPath(r.URL.Query().Get("state"))
 	code := r.URL.Query().Get("code")
 	t, err := f.Exchange(oauth2.NoContext, code)
@@ -197,7 +197,7 @@ func handleOAuth2Callback(f *oauth2.Config, s sessions.Session, w http.ResponseW
 	http.Redirect(w, r, next, codeRedirect)
 }
 
-func unmarshallToken(s sessions.Session) (t *token) {
+func unmarshallToken(s session.Store) (t *token) {
 	if s.Get(keyToken) == nil {
 		return
 	}
