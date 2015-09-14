@@ -123,7 +123,7 @@ func LinkedIn(conf *oauth2.Config) macaron.Handler {
 // NewOAuth2Provider returns a generic OAuth 2.0 backend endpoint.
 func NewOAuth2Provider(conf *oauth2.Config) macaron.Handler {
 
-	return func(s session.Store, c macaron.Context, w http.ResponseWriter, r *http.Request) {
+	return func(s session.Store, c *macaron.Context, w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			switch r.URL.Path {
 			case PathLogin:
